@@ -1,12 +1,1413 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<title>ACM Technik</title>
-<meta http-equiv="refresh" content="0; url=https://acmtechnik.com/">
-<link rel="canonical" href="https://acmtechnik.com/">
-</head>
-<body>
-<p>Redirecting to <a href="https://acmtechnik.com/">acmtechnik.com</a>…</p>
-</body>
-</html>
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}
+.buy { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin:18px 0 6px; }
+.buy-label { font-family:var(--display); font-weight:700; font-size:15px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink); margin-right:4px; }
+.buy a { display:inline-flex; align-items:center; gap:8px; padding:12px 22px; background:var(--brand); color:#fff; text-decoration:none;
+  font-family:var(--display); font-weight:700; font-size:15px; letter-spacing:.08em; text-transform:uppercase;
+  clip-path:polygon(var(--cut) 0,100% 0,100% calc(100% - var(--cut)),calc(100% - var(--cut)) 100%,0 100%,0 var(--cut)); transition:background .15s; }
+.buy a:hover, .buy a:focus-visible { background:#9a1cc6; }
+.buy a:focus-visible { outline:2px solid var(--hud); outline-offset:3px; }
+.buy a span { font-family:var(--mono); font-weight:500; font-size:11px; opacity:.8; letter-spacing:0; text-transform:none; }
+</style></head><body>
+<title>Matrix Headlights</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: vehicle-systems HUD. Chamfered instrument panels on a faint blueprint grid; driver channel on top, overhead radar + LED array + telemetry below, sense→decide→shape pipeline at the end. Single dark theme on purpose: it's night driving. */
+:root {
+  color-scheme: dark;
+  --night: #07050b;
+  --panel: #0e0a14;
+  --panel-2: #140e1c;
+  --rule: #2c2040;
+  --rule-2: #1e162b;
+  --ink: #f2edf8;
+  --muted: #a093b2;
+  --brand: #8410ab;
+  --hud: #c66cf2;
+  --hud-dim: rgba(132, 16, 171, 0.28);
+  --grid: rgba(198, 108, 242, 0.04);
+  --led: #e4f6ff;
+  --led-off: #1a1424;
+  --detect: #ffb547;
+  --ok: #4ff0b0;
+  --warn: #ff5d6c;
+  --display: "Chakra Petch", "Eurostile", "Bank Gothic", "Arial Narrow", sans-serif;
+  --body: "Barlow", "Helvetica Neue", Arial, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --cut: 14px;
+}
+* { box-sizing: border-box; }
+body {
+  background-color: var(--night);
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 32px 32px;
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 15px;
+  line-height: 1.5;
+}
+.wrap {
+  max-width: 1160px;
+  margin: 0 auto;
+  padding-block: 28px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid;
+  gap: 20px;
+}
+
+/* header */
+header { display: grid; gap: 10px; }
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--hud);
+  display: flex; align-items: center; gap: 10px;
+}
+.eyebrow::before { content: ""; width: 28px; height: 1px; background: var(--hud); }
+h1 {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: clamp(36px, 6.4vw, 64px);
+  line-height: 0.95;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin: 0;
+  text-wrap: balance;
+  text-shadow: 0 0 24px rgba(198, 108, 242, 0.25);
+}
+h1 span { color: var(--hud); }
+.lead { margin: 0; max-width: 66ch; color: var(--muted); font-size: 16px; }
+.status { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink);
+  border: 1px solid var(--rule);
+  background: rgba(16, 11, 24, 0.8);
+  padding: 4px 10px 4px 8px;
+  display: inline-flex; align-items: center; gap: 7px;
+  clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
+}
+.chip .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+.chip .dot.amber { background: var(--detect); box-shadow: 0 0 8px var(--detect); }
+.chip b { color: var(--hud); font-weight: 500; }
+@media (prefers-reduced-motion: no-preference) {
+  .chip .dot { animation: blink 1.6s steps(2, start) infinite; }
+}
+@keyframes blink { 50% { opacity: 0.35; } }
+
+/* panels: chamfered with HUD corner brackets */
+.view, .card {
+  position: relative;
+  background: linear-gradient(180deg, rgba(16, 11, 24, 0.92), rgba(10, 7, 15, 0.92));
+  border: 1px solid var(--rule);
+  clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut));
+}
+.view::after, .card::after {
+  content: "";
+  position: absolute; inset: 0;
+  pointer-events: none;
+  --c: var(--hud);
+  background:
+    linear-gradient(var(--c), var(--c)) right 0 top 0 / 18px 1.5px no-repeat,
+    linear-gradient(var(--c), var(--c)) right 0 top 0 / 1.5px 18px no-repeat,
+    linear-gradient(var(--c), var(--c)) left 0 bottom 0 / 18px 1.5px no-repeat,
+    linear-gradient(var(--c), var(--c)) left 0 bottom 0 / 1.5px 18px no-repeat,
+    linear-gradient(135deg, var(--c) 0 1.5px, transparent 1.5px) left 0 top 0 / var(--cut) var(--cut) no-repeat;
+  opacity: 0.85;
+}
+.view { margin: 0; overflow: hidden; }
+.view canvas { display: block; width: 100%; }
+.scan {
+  position: absolute; inset: 0; pointer-events: none;
+  background: repeating-linear-gradient(180deg, rgba(198, 108, 242, 0.035) 0 1px, transparent 1px 3px);
+  mix-blend-mode: screen;
+}
+#driver { aspect-ratio: 16 / 7; }
+#driver2 { aspect-ratio: 16 / 11; }
+.dual { display: grid; grid-template-columns: 1fr; gap: 2px; background: var(--rule); }
+.dual.compare { grid-template-columns: 1fr 1fr; }
+.dual.compare #driver { aspect-ratio: 16 / 11; }
+.pane { position: relative; background: var(--panel); min-width: 0; }
+.ptag {
+  position: absolute; top: 9px; left: 20px;
+  font: 500 10.5px/1 var(--mono); letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--hud); background: rgba(8, 5, 12, 0.85);
+  border: 1px solid currentColor; padding: 4px 8px;
+  pointer-events: none;
+}
+.ptag b { font-weight: 600; margin-right: 6px; opacity: 0.7; }
+.ptag.bad { color: var(--warn); }
+.ptag.low { color: var(--muted); }
+.vs {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  font: 600 13px/1 var(--display); letter-spacing: 0.1em;
+  color: var(--ink); background: var(--night); border: 1px solid var(--rule);
+  padding: 6px 7px; pointer-events: none;
+}
+.wfbox { padding: 6px 8px 8px; background: #050308; border: 1px solid var(--rule-2); border-top: 0; }
+.wf-head { display: flex; justify-content: space-between; margin-top: 12px; margin-bottom: 4px; font: 10px var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.wf-head span:first-child { color: var(--hud); }
+#wf { display: block; width: 100%; height: 108px; }
+.log { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; font: 12px/1.45 var(--mono); max-height: 152px; overflow: hidden; }
+.log li { display: grid; grid-template-columns: 7ch 1fr; gap: 10px; padding: 3px 0; border-bottom: 1px solid var(--rule-2); }
+.log li .t { color: var(--muted); font-variant-numeric: tabular-nums; }
+.log li .off { color: var(--warn); }
+.log li .on { color: var(--ok); }
+.log li .dim { color: var(--detect); }
+.log li .why { color: var(--muted); }
+@media (prefers-reduced-motion: no-preference) { .log li:first-child { animation: flash 0.6s ease-out; } }
+@keyframes flash { from { background: rgba(198, 108, 242, 0.18); } to { background: transparent; } }
+.cmp td { vertical-align: middle; }
+.cmp tr.cur td:first-child { color: var(--hud); }
+.cmp tr.cur td { background: rgba(198, 108, 242, 0.06); }
+.cmp .mbar { width: 100%; min-width: 50px; height: 5px; background: var(--led-off); position: relative; }
+.cmp .mbar i { position: absolute; inset: 0 auto 0 0; background: var(--hud); box-shadow: 0 0 6px var(--hud); }
+.yn { padding: 1px 6px; border: 1px solid currentColor; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; }
+.yn.bad { color: var(--warn); } .yn.good { color: var(--ok); } .yn.na { color: var(--muted); border-color: transparent; }
+.cell.dimmed { outline-color: var(--detect); }
+.cell.dimmed i { background: linear-gradient(180deg, #fff3dc, #ffcf80); box-shadow: 0 0 10px 2px rgba(255, 181, 71, 0.45); }
+#top { aspect-ratio: 4 / 3; }
+.view figcaption {
+  position: absolute;
+  top: 10px; left: 22px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--hud);
+  pointer-events: none;
+  text-shadow: 0 0 8px rgba(198, 108, 242, 0.5);
+}
+.view figcaption span { color: var(--muted); }
+
+/* controls */
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+  align-items: center;
+  padding: 12px 16px;
+  background: rgba(12, 8, 18, 0.95);
+  border-top: 1px solid var(--rule);
+}
+.group { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.group > .lbl {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.seg { display: inline-flex; border: 1px solid var(--rule); }
+.seg button {
+  font: 500 12px/1 var(--mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  padding: 9px 11px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.seg button + button { border-left: 1px solid var(--rule); }
+.seg button[aria-pressed="true"] {
+  background: var(--brand);
+  color: #fff;
+  box-shadow: inset 0 -2px 0 var(--hud);
+  text-shadow: 0 0 8px rgba(198, 108, 242, 0.6);
+}
+.seg button:hover:not([aria-pressed="true"]) { color: var(--ink); background: rgba(198, 108, 242, 0.05); }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--detect); outline-offset: 2px; }
+.play {
+  width: 38px; height: 34px;
+  border: 1px solid var(--hud);
+  background: var(--hud-dim);
+  color: var(--hud);
+  cursor: pointer;
+  display: grid; place-items: center;
+  clip-path: polygon(7px 0, 100% 0, 100% calc(100% - 7px), calc(100% - 7px) 100%, 0 100%, 0 7px);
+}
+.play svg { width: 13px; height: 13px; fill: currentColor; }
+.timeline { flex: 1 1 200px; display: flex; align-items: center; gap: 10px; min-width: 0; }
+#scrub { flex: 1; min-width: 0; accent-color: var(--hud); }
+#clock { font-family: var(--mono); font-size: 12px; color: var(--hud); font-variant-numeric: tabular-nums; min-width: 6.5ch; }
+.chk { display: inline-flex; align-items: center; gap: 6px; font: 500 12px var(--mono); letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); cursor: pointer; }
+.chk input { accent-color: var(--detect); }
+
+/* lower */
+.lower { display: grid; grid-template-columns: 1.05fr 1fr; gap: 20px; }
+.side { display: grid; gap: 14px; align-content: start; min-width: 0; }
+.card { padding: 14px 18px 16px; min-width: 0; }
+.card h2 {
+  margin: 0 0 12px;
+  font-family: var(--mono);
+  font-weight: 500;
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--hud);
+  display: flex; justify-content: space-between; gap: 10px;
+}
+.card h2 span { color: var(--muted); }
+.strip {
+  display: grid;
+  grid-template-columns: repeat(24, 1fr);
+  gap: 3px;
+  padding: 10px 8px;
+  background: #050308;
+  border: 1px solid var(--rule-2);
+  box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.8);
+}
+.cell {
+  position: relative;
+  aspect-ratio: 1 / 2.4;
+  background: var(--led-off);
+  outline: 1.5px solid transparent;
+  outline-offset: 1px;
+}
+.cell i {
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, #ffffff, var(--led) 45%, #b9dcff);
+  box-shadow: 0 0 10px 2px rgba(160, 215, 255, 0.55);
+}
+.cell.cut { outline-color: var(--detect); }
+.idx {
+  display: grid;
+  grid-template-columns: repeat(24, 1fr);
+  gap: 3px;
+  padding: 4px 8px 0;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--muted);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.axis {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; font: 11px var(--mono); letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 8px; height: 14px; display: inline-block; }
+
+.caption { font-size: 15.5px; line-height: 1.55; margin: 0; min-height: 4.6em; }
+.caption b { color: var(--detect); font-weight: 600; font-family: var(--mono); font-size: 14px; }
+
+.metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.metric .k { font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+.metric .v { font-family: var(--display); font-weight: 600; font-size: 34px; line-height: 1.1; letter-spacing: 0.03em; font-variant-numeric: tabular-nums; color: var(--hud); text-shadow: 0 0 14px rgba(198, 108, 242, 0.35); }
+.metric .v.ok { color: var(--ok); text-shadow: 0 0 14px rgba(79, 240, 176, 0.35); }
+.metric .v.warn { color: var(--warn); text-shadow: 0 0 14px rgba(255, 93, 108, 0.4); }
+.bar { height: 4px; background: var(--led-off); margin-top: 6px; position: relative; overflow: hidden; }
+.bar i { position: absolute; inset: 0 auto 0 0; background: var(--hud); box-shadow: 0 0 8px var(--hud); }
+.ticks { display: flex; gap: 2px; margin-top: 6px; }
+.ticks i { flex: 1; height: 4px; background: var(--led-off); }
+.ticks.on-warn i { background: var(--warn); box-shadow: 0 0 6px var(--warn); }
+.ticks.on-ok i:first-child { background: var(--ok); box-shadow: 0 0 6px var(--ok); }
+
+table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+th { text-align: left; font-family: var(--mono); font-weight: 500; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); padding: 0 10px 6px 0; border-bottom: 1px solid var(--rule); }
+td { padding: 7px 10px 7px 0; border-bottom: 1px solid var(--rule-2); vertical-align: top; font-family: var(--mono); font-size: 12.5px; }
+td.id { color: var(--detect); }
+td .act { padding: 1px 6px; border: 1px solid currentColor; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; }
+td .act.off { color: var(--warn); }
+td .act.dim { color: var(--detect); }
+.empty { color: var(--muted); font: 12px var(--mono); letter-spacing: 0.04em; text-transform: uppercase; padding-top: 4px; }
+.tbl { overflow-x: auto; }
+
+/* pipeline */
+.steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; position: relative; }
+.step { display: grid; gap: 6px; align-content: start; position: relative; }
+.step .n { font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--hud); }
+.step h3 { margin: 0; font-family: var(--display); font-weight: 600; font-size: 22px; letter-spacing: 0.06em; text-transform: uppercase; }
+.step p { margin: 0; color: var(--muted); max-width: 42ch; }
+.step:not(:last-child) .n::after {
+  content: "";
+  position: absolute;
+  top: 7px; left: 92px; right: -14px;
+  height: 1px;
+  background: linear-gradient(90deg, var(--hud), rgba(198, 108, 242, 0.1));
+}
+.step:not(:last-child)::after {
+  content: "";
+  position: absolute; top: 4px; right: -14px;
+  border: 4px solid transparent; border-left: 6px solid rgba(198, 108, 242, 0.5);
+}
+.note { color: var(--muted); font: 11.5px/1.6 var(--mono); letter-spacing: 0.02em; max-width: 92ch; margin: 0; }
+
+@media (max-width: 760px) {
+  .dual.compare { grid-template-columns: 1fr; }
+  .dual.compare #driver, #driver2 { aspect-ratio: 16 / 10; }
+  .vs { display: none; }
+}
+@media (max-width: 820px) {
+  .lower { grid-template-columns: 1fr; }
+  .steps { grid-template-columns: 1fr; }
+  .step:not(:last-child) .n::after, .step:not(:last-child)::after { display: none; }
+}
+@media (max-width: 560px) {
+  #driver, #driver2, .dual.compare #driver { aspect-ratio: 4 / 3; }
+  .strip, .idx { gap: 2px; padding-left: 6px; padding-right: 6px; }
+  .seg button { padding: 8px 8px; font-size: 11px; }
+}
+
+/* progressive disclosure */
+.wrap[data-level="1"] [data-lv="2"],
+.wrap[data-level="1"] [data-lv="3"],
+.wrap[data-level="2"] [data-lv="3"] { display: none !important; }
+
+.verdicts { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; background: var(--rule); border-top: 1px solid var(--rule); }
+.verdict { background: rgba(12, 8, 18, 0.96); padding: 12px 20px; display: grid; min-width: 0; }
+.vline { margin: 0; font-family: var(--display); font-weight: 600; font-size: clamp(18px, 2.1vw, 24px); line-height: 1.15; letter-spacing: 0.02em; text-wrap: balance; }
+.verdict.good .vline { color: var(--ok); }
+.verdict.bad .vline { color: var(--warn); }
+.vline::before { display: inline-block; width: 1.1em; font-family: var(--mono); }
+.verdict.good .vline::before { content: "✓"; }
+.verdict.bad .vline::before { content: "✕"; }
+.vstats { display: flex; flex-wrap: wrap; gap: 10px 28px; align-items: center; }
+.vstats > div { display: flex; align-items: center; gap: 10px; }
+.vstats .k { font: 10px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.vstats .num { font: 600 18px/1 var(--display); color: var(--ink); font-variant-numeric: tabular-nums; min-width: 3ch; }
+.vstats .mbar { display: block; width: 90px; height: 5px; background: var(--led-off); position: relative; }
+.vstats .mbar i { position: absolute; inset: 0 auto 0 0; background: var(--hud); box-shadow: 0 0 6px var(--hud); transition: width 0.25s; }
+
+.disclose { display: flex; justify-content: center; }
+.more {
+  font: 500 13px/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--hud); background: var(--hud-dim); border: 1px solid var(--hud);
+  padding: 12px 18px; cursor: pointer; display: inline-flex; align-items: center; gap: 10px;
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+}
+.more:hover { background: rgba(198, 108, 242, 0.24); }
+.more.small { font-size: 11px; padding: 8px 12px; background: transparent; border-color: var(--rule); color: var(--muted); }
+.more.small:hover, .more.small[aria-expanded="true"] { color: var(--hud); border-color: var(--hud); }
+.chev { width: 8px; height: 8px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: translateY(-2px) rotate(45deg); transition: transform 0.2s; }
+[aria-expanded="true"] > .chev { transform: translateY(2px) rotate(-135deg); }
+.how { display: grid; gap: 20px; }
+.how-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; padding-top: 6px; border-top: 1px solid var(--rule); }
+.sec { margin: 0; font-family: var(--display); font-weight: 600; font-size: 26px; letter-spacing: 0.06em; text-transform: uppercase; }
+@media (prefers-reduced-motion: no-preference) {
+  .how { animation: mxreveal 0.35s ease-out; }
+}
+@keyframes mxreveal { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+@media (max-width: 760px) {
+  .cmpgrid { display: grid; gap: 2px; background: var(--rule); }
+  .cmpgrid .dual, .cmpgrid .verdicts { display: contents; }
+  #paneA { order: 1; } #vA { order: 2; } #paneB { order: 3; } #vB { order: 4; }
+  .verdict { padding: 12px 16px 14px; }
+}
+.view figcaption { top: auto; bottom: 10px; }
+
+/* scene tabs */
+.tabbar { display: flex; flex-wrap: wrap; align-items: stretch; background: rgba(12, 8, 18, 0.96); border-bottom: 1px solid var(--rule); }
+.tabs { flex: 1 1 520px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.tabs button {
+  display: grid; gap: 3px; align-content: center; text-align: left;
+  font: 600 15px/1.2 var(--body); color: var(--muted);
+  background: transparent; border: 0; border-right: 1px solid var(--rule-2);
+  padding: 13px 16px 12px; cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+.tabs button small { font: 500 10px/1.3 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); opacity: 0.8; }
+.tabs button:hover { color: var(--ink); background: rgba(198, 108, 242, 0.04); }
+.tabs button[aria-pressed="true"] { color: var(--ink); background: var(--hud-dim); box-shadow: inset 0 -2px 0 var(--hud); }
+.tabs button[aria-pressed="true"] small { color: var(--hud); opacity: 1; }
+.cmpwith { display: flex; align-items: center; gap: 10px; padding: 10px 16px; }
+.cmpwith .lbl { font: 10px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+.controls .timeline { flex: 1 1 100%; }
+@media (max-width: 560px) {
+  .tabs { grid-template-columns: repeat(2, minmax(0, 1fr)); flex-basis: 100%; }
+  .tabs button:nth-child(-n+2) { border-bottom: 1px solid var(--rule-2); }
+  .tabs button:nth-child(2n) { border-right: 0; }
+  .cmpwith { flex-basis: 100%; border-top: 1px solid var(--rule-2); padding: 10px 16px; }
+}
+
+.brandmark { font-family: var(--display); font-weight: 700; font-size: 13px; letter-spacing: 0.16em; color: var(--ink); background: var(--brand); padding: 3px 8px 2px; }
+.eyebrow::before { background: var(--brand); height: 2px; }
+.more { background: var(--brand); color: #fff; border-color: var(--brand); }
+.more:hover { background: #9a1cc6; }
+.tabs button[aria-pressed="true"] { box-shadow: inset 0 -3px 0 var(--brand); }
+</style>
+
+<main class="wrap" id="root" data-level="1">
+  <header>
+    <div class="eyebrow"><b class="brandmark">ACM Technik</b> · Matrix LED explained</div>
+    <h1>Matrix <span>Headlights</span></h1>
+    <p class="lead">Same road, same moment. Matrix headlights keep full high beam on everything except other drivers' eyes.</p>
+    <div class="buy" role="group" aria-label="Buy now">
+      <span class="buy-label">Buy Now</span>
+      <a href="https://acmtechnik.com/products/vw-feature-activation-suite">Volkswagen <span>→ feature builder</span></a>
+      <a href="https://acmtechnik.com/products/audi-feature-activation-suite">Audi <span>→ feature builder</span></a>
+    </div>
+    <div class="status" data-lv="3">
+      <span class="chip"><i class="dot"></i>Front camera <b id="st-cam">tracking</b></span>
+      <span class="chip"><i class="dot amber"></i>Targets <b id="st-tgt">0</b></span>
+      <span class="chip">LED array <b>24 seg · ±22°</b></span>
+      <span class="chip">Compared with <b id="st-mode">Plain high beam</b></span>
+    </div>
+  </header>
+
+  <section>
+    <figure class="view">
+      <div class="tabbar">
+        <div class="tabs" id="scene" role="group" aria-label="Scene">
+          <button id="sc-oncoming" data-v="oncoming" aria-pressed="true">Oncoming car<small>Their eyes stay dark</small></button>
+          <button id="sc-ahead" data-v="ahead" aria-pressed="false">Car ahead<small>No mirror glare</small></button>
+          <button id="sc-sign" data-v="sign" aria-pressed="false">Road sign<small>Dimmed, not blinding</small></button>
+          <button id="sc-all" data-v="all" aria-pressed="false">All three<small>At the same time</small></button>
+          <button id="sc-laser" data-v="laser" aria-pressed="false">Laser<small>Twice the reach</small></button>
+        </div>
+        <div class="cmpwith">
+          <span class="lbl">Compare with</span>
+          <div class="seg" id="vsel">
+            <button id="vs-high" data-v="high" aria-pressed="true">High beam</button>
+            <button id="vs-low" data-v="low" aria-pressed="false">Low beam</button>
+          </div>
+        </div>
+      </div>
+      <div class="cmpgrid">
+      <div class="dual compare" id="dual">
+        <div class="pane" id="paneA"><canvas id="driver" aria-label="Driver's-eye view of a night road lit by matrix headlights"></canvas><div class="scan"></div><div class="ptag" id="tagA"><b>A</b>Matrix headlights</div></div>
+        <div class="pane" id="paneB"><canvas id="driver2" aria-label="The same moment with conventional headlights"></canvas><div class="scan"></div><div class="ptag bad" id="tagB"><b>B</b>Plain high beam</div></div>
+        <div class="vs" id="vs">VS</div>
+      </div>
+      <div class="verdicts">
+        <div class="verdict" id="vA">
+          <div class="vstats">
+            <div><span class="k">Your view</span><span class="yn good" id="vA-view">Full distance</span></div>
+            <div><span class="k">Other driver</span><span class="yn good" id="vA-dz">Clear</span></div>
+          </div>
+        </div>
+        <div class="verdict" id="vB">
+          <div class="vstats">
+            <div><span class="k">Your view</span><span class="yn good" id="vB-view">Full distance</span></div>
+            <div><span class="k">Other driver</span><span class="yn bad" id="vB-dz">Dazzled</span></div>
+          </div>
+        </div>
+      </div>
+      </div>
+      <div class="controls">
+        <div class="timeline">
+          <button class="play" id="play" aria-label="Pause"></button>
+          <input type="range" id="scrub" min="0" max="12" step="0.01" value="3" aria-label="Scrub through the scene">
+          <span id="clock" data-lv="3">T+03.00</span>
+        </div>
+        <div class="group" data-lv="3">
+          <span class="lbl">Speed</span>
+          <div class="seg" id="speed">
+            <button id="sp-25" data-v="0.25" aria-pressed="false">¼×</button>
+            <button id="sp-50" data-v="0.5" aria-pressed="true">½×</button>
+            <button id="sp-100" data-v="1" aria-pressed="false">1×</button>
+          </div>
+        </div>
+        <label class="chk" data-lv="3"><input type="checkbox" id="showdet" checked> Show camera detections</label>
+      </div>
+    </figure>
+  </section>
+
+  <div class="disclose">
+    <button class="more" id="more" aria-expanded="false" aria-controls="how">How does it do that? <span class="chev" aria-hidden="true"></span></button>
+  </div>
+
+  <section class="how" id="how" data-lv="2">
+    <div class="how-head">
+      <h2 class="sec">How it works</h2>
+      <button class="more small" id="detail" aria-expanded="false">Show engineering detail <span class="chev" aria-hidden="true"></span></button>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <span class="n">01 · Sense</span>
+        <h3>Camera</h3>
+        <p>A camera behind the windshield looks for headlights, taillights and bright signs, and works out the angle to each one.</p>
+      </div>
+      <div class="step">
+        <span class="n">02 · Decide</span>
+        <h3>Control unit</h3>
+        <p>Each LED segment covers a fixed slice of angle. The unit picks the slices that overlap each object, plus a small safety margin.</p>
+      </div>
+      <div class="step">
+        <span class="n">03 · Shape</span>
+        <h3>LED segments</h3>
+        <p>Those segments switch off or dim, many times a second. The dark gap follows the other car as it moves across your view.</p>
+      </div>
+    </div>
+
+    <div class="lower">
+      <div class="side">
+        <figure class="view">
+          <canvas id="top" aria-label="Overhead view showing each LED segment's beam as a wedge"></canvas>
+          <div class="scan"></div>
+          <figcaption>Overhead <span>· wedge = segment</span></figcaption>
+        </figure>
+        <div class="card" data-lv="3">
+          <h2>Camera tracks <span>object · range · bearing</span></h2>
+          <div class="tbl" id="dets"></div>
+        </div>
+        <div class="card" data-lv="3">
+          <h2>All modes <span>this moment</span></h2>
+          <div class="tbl"><table class="cmp"><thead><tr><th>Mode</th><th>High beam</th><th></th><th>Drivers</th><th>Sign</th></tr></thead><tbody id="cmp"></tbody></table></div>
+        </div>
+      </div>
+
+      <div class="side">
+        <div class="card">
+          <h2>Matrix LED array <span id="segcount">24/24 on</span></h2>
+          <div class="strip" id="strip"></div>
+          <div class="idx" id="idx"></div>
+          <div class="axis"><span>22° left</span><span>straight ahead</span><span>22° right</span></div>
+          <div class="legend">
+            <span><i class="sw" style="background:var(--led)"></i>On</span>
+            <span><i class="sw" style="background:var(--led-off)"></i>Off</span>
+            <span><i class="sw" style="background:#ffcf80"></i>Dimmed</span>
+            <span><i class="sw" style="outline:1.5px solid var(--detect);outline-offset:1px;background:var(--led-off)"></i>Switched for a detected object</span>
+          </div>
+          <div data-lv="3">
+            <div class="wf-head"><span>Segment history</span><span>now ↑ · 6 s ago ↓</span></div>
+            <div class="wfbox"><canvas id="wf" aria-label="Which segments were on or off over the last six seconds"></canvas></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>What the system is doing</h2>
+          <p class="caption" id="caption" aria-live="polite"></p>
+        </div>
+
+        <div class="card" data-lv="3">
+          <h2>Switching events <span>LED array</span></h2>
+          <ol class="log" id="log"></ol>
+        </div>
+      </div>
+    </div>
+    <p class="note">Simplified for clarity: one lamp with 24 segments, distances compressed, lateral scale stretched in the overhead view. Laser: activation speed and reach vary by model; shown here as about 70 km/h and roughly twice the LED high beam. Early production systems used a few dozen segments per lamp; newer pixel and digital units use hundreds to over a million.</p>
+  </section>
+</main>
+
+<script>
+(() => {
+  const DEG = Math.PI / 180;
+  const N = 24, SPREAD = 22 * DEG, STEP = 2 * SPREAD / N;
+  const RANGE = 75, LOOP = 12, MARGIN = 0.6 * DEG, CAMH = 1.25;
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  const state = { t: 3, playing: !reduce, speed: 0.5, scene: "oncoming", mode: "compare", vs: "high", level: 1, detect: true, snap: true };
+  const brights = { matrix: new Float32Array(N).fill(1), high: new Float32Array(N).fill(1), low: new Float32Array(N).fill(0) };
+  let bright = brights.matrix, curMode = "matrix";
+  const primary = () => state.mode === "compare" ? "matrix" : state.mode;
+  const use = m => { curMode = m; bright = brights[m]; };
+  const LASER_RANGE = 150, LASER_W = 3.2 * DEG, LASER_KMH = 70, CAM_RANGE = 200;
+  let laserB = 0;
+  const kmhAt = t => Math.min(110, 30 + t * 16);
+  const segA = i => [-SPREAD + i * STEP, -SPREAD + (i + 1) * STEP];
+
+  // ---------- LED strip ----------
+  const strip = document.getElementById("strip");
+  const cells = [];
+  for (let i = 0; i < N; i++) {
+    const c = document.createElement("div");
+    c.className = "cell";
+    c.title = "Segment " + (i + 1);
+    const l = document.createElement("i");
+    c.appendChild(l);
+    strip.appendChild(c);
+    cells.push({ c, l });
+  }
+  const idxEl = document.getElementById("idx");
+  for (let i = 0; i < N; i++) { const d = document.createElement("span"); d.textContent = i % 3 === 0 ? String(i + 1).padStart(2, "0") : ""; idxEl.appendChild(d); }
+  const TID = { oncoming: "VEH-01", ahead: "VEH-02", sign: "OBJ-03" };
+  const TKIND = { oncoming: "Headlights", ahead: "Taillights", sign: "Reflector" };
+
+  // ---------- Scene objects ----------
+  function objects(t, sc) {
+    const o = [];
+    const onc = () => o.push({ kind: "car", role: "oncoming", name: "Oncoming car", x0: -4.5, x1: -2.7, y: 85 - 10 * t, len: 4.5, dim: 0 });
+    const ahead = () => o.push({ kind: "car", role: "ahead", name: "Car ahead", x0: -0.9, x1: 0.9, y: 26 + 5 * Math.sin(t * 0.52), len: 4.5, dim: 0 });
+    const sign = y => o.push({ kind: "sign", role: "sign", name: "Road sign", x0: 4.0, x1: 5.3, y, len: 0.1, dim: 0.3 });
+    if (sc === "oncoming") onc();
+    if (sc === "ahead") ahead();
+    if (sc === "sign") sign(80 - 8 * t);
+    if (sc === "all") { onc(); ahead(); sign(110 - 12 * t); }
+    if (sc === "laser" && t >= 6.2) o.push({ kind: "car", role: "oncoming", name: "Oncoming car", x0: -4.5, x1: -2.7, y: 190 - 30 * (t - 6.2), len: 4.5, dim: 0 });
+    return o;
+  }
+  function extent(ob) {
+    let mn = 1e9, mx = -1e9;
+    for (const X of [ob.x0, ob.x1]) for (const Y of [Math.max(ob.y, 0.4), ob.y + ob.len]) {
+      if (Y <= 0.3) continue;
+      const a = Math.atan2(X, Y);
+      mn = Math.min(mn, a); mx = Math.max(mx, a);
+    }
+    return [mn, mx];
+  }
+  function segsIn(a, b, m) {
+    const s = [];
+    for (let i = 0; i < N; i++) { const [s0, s1] = segA(i); if (s1 > a - m && s0 < b + m) s.push(i); }
+    return s;
+  }
+
+  function compute(t = state.t) {
+    const obs = objects(t, state.scene);
+    const targets = { matrix: new Float32Array(N).fill(1), high: new Float32Array(N).fill(1), low: new Float32Array(N).fill(0) };
+    const dets = [];
+    for (const ob of obs) {
+      ob.vis = ob.y + ob.len > 1.2 && ob.y < (state.scene === "laser" ? CAM_RANGE + 10 : RANGE + 8);
+      ob.raw = []; ob.segs = [];
+      if (!ob.vis) continue;
+      [ob.a, ob.b] = extent(ob);
+      ob.segs = segsIn(ob.a, ob.b, MARGIN);
+      ob.raw = segsIn(ob.a, ob.b, 0);
+      if (ob.segs.length && ob.y < RANGE + 8) {
+        for (const i of ob.segs) targets.matrix[i] = Math.min(targets.matrix[i], ob.dim);
+        dets.push(ob);
+      }
+    }
+    const isLaser = state.scene === "laser";
+    const kmh = isLaser ? kmhAt(t) : null;
+    const laserCar = isLaser ? obs.find(o => o.kind === "car" && o.vis && o.y < CAM_RANGE) : null;
+    const laserTarget = isLaser && kmh >= LASER_KMH && !laserCar ? 1 : 0;
+    return { obs, targets, dets, isLaser, kmh, laserCar, laserTarget };
+  }
+
+  function highLitOf(ob) {
+    if (!ob.vis || !ob.raw || !ob.raw.length || ob.y > RANGE) return 0;
+    let s = 0; for (const i of ob.raw) s += bright[i];
+    return s / ob.raw.length;
+  }
+  function lowLitAt(X, Y) {
+    if (Y < 1 || Y > 30) return 0;
+    if (X < -3 - Y * 0.2 || X > 3 + Y * 0.5) return 0;
+    return (1 - Y / 30) * 0.85;
+  }
+  function litAt(X, Y) {
+    let v = lowLitAt(X, Y);
+    const a = Math.atan2(X, Y);
+    if (Math.abs(a) < SPREAD && Y > 2 && Y < RANGE) {
+      const i = Math.min(N - 1, Math.floor((a + SPREAD) / STEP));
+      const fall = Y < 7 ? (Y - 2) / 5 : 1 - (Y - 7) / (RANGE - 7) * 0.55;
+      v += bright[i] * fall;
+    }
+    if (curMode === "matrix" && laserB > 0.01 && Math.abs(a) < LASER_W && Y > 25 && Y < LASER_RANGE) v += laserB * 0.9;
+    return Math.min(1, v);
+  }
+
+  // ---------- Canvas helpers ----------
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const cvD = document.getElementById("driver"), cxD = cvD.getContext("2d");
+  const cvD2 = document.getElementById("driver2"), cxD2 = cvD2.getContext("2d");
+  const cvW = document.getElementById("wf"), cxW = cvW.getContext("2d");
+  const ctxOf = { D: cxD, D2: cxD2 };
+  const cvT = document.getElementById("top"), cxT = cvT.getContext("2d");
+  const size = { D: { w: 0, h: 0 }, D2: { w: 0, h: 0 }, T: { w: 0, h: 0 }, W: { w: 0, h: 0 } };
+  function fit() {
+    for (const [k, cv, cx] of [["D", cvD, cxD], ["D2", cvD2, cxD2], ["T", cvT, cxT], ["W", cvW, cxW]]) {
+      const w = cv.clientWidth, h = cv.clientHeight;
+      if (!w || !h) continue;
+      cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+      cx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      size[k] = { w, h };
+    }
+  }
+  new ResizeObserver(() => { fit(); draw(lastFrame); }).observe(cvD);
+  new ResizeObserver(() => { fit(); draw(lastFrame); }).observe(cvT);
+  new ResizeObserver(() => { fit(); draw(lastFrame); }).observe(cvD2);
+  new ResizeObserver(() => { fit(); draw(lastFrame); }).observe(cvW);
+
+  const mix = (a, b, t) => a + (b - a) * t;
+  const rgb = (c1, c2, t) => `rgb(${Math.round(mix(c1[0], c2[0], t))},${Math.round(mix(c1[1], c2[1], t))},${Math.round(mix(c1[2], c2[2], t))})`;
+  const LIGHT = "205,222,255";
+
+  // ---------- Driver's view ----------
+  function drawDriver(F, C) {
+    const { w, h } = size[C]; if (!w) return;
+    const g = ctxOf[C];
+    const cx = w / 2, H0 = h * 0.4, f = (w / 2) / Math.tan(25 * DEG);
+    const P = (X, Y, Z = 0) => [cx + f * X / Y, H0 + f * (CAMH - Z) / Y];
+    const scroll = (state.t * 12) % 12;
+
+    // sky + ground
+    let gr = g.createLinearGradient(0, 0, 0, H0);
+    gr.addColorStop(0, "#010309"); gr.addColorStop(1, "#071322");
+    g.fillStyle = gr; g.fillRect(0, 0, w, H0 + 1);
+    g.fillStyle = "#03060a"; g.fillRect(0, H0, w, h - H0);
+    // treeline silhouette
+    g.fillStyle = "#02050a";
+    g.beginPath(); g.moveTo(0, H0);
+    for (let x = 0; x <= w; x += 14) g.lineTo(x, H0 - 6 - 7 * Math.abs(Math.sin(x * 0.031) + 0.6 * Math.sin(x * 0.083)));
+    g.lineTo(w, H0); g.closePath(); g.fill();
+
+    // road
+    const quad = (xa, xb, ya, yb) => {
+      const p1 = P(xa, ya), p2 = P(xb, ya), p3 = P(xb, yb), p4 = P(xa, yb);
+      g.beginPath(); g.moveTo(...p1); g.lineTo(...p2); g.lineTo(...p3); g.lineTo(...p4); g.closePath(); g.fill();
+    };
+    g.fillStyle = "#0b1016"; quad(-5.7, 3.7, 1.0, 800);
+
+    // light overlay
+    g.save();
+    g.globalCompositeOperation = "lighter";
+    const yFar = H0 + f * CAMH / RANGE, yNear = Math.min(h, H0 + f * CAMH / 6);
+    const hazeTop = H0 - h * 0.14;
+    for (let i = 0; i < N; i++) {
+      const b = bright[i]; if (b < 0.01) continue;
+      const [a0, a1] = segA(i);
+      const x0 = Math.round(cx + f * Math.tan(a0)), x1 = Math.round(cx + f * Math.tan(a1));
+      let lg = g.createLinearGradient(0, yFar, 0, yNear);
+      lg.addColorStop(0, `rgba(${LIGHT},${0.05 * b})`);
+      lg.addColorStop(0.25, `rgba(${LIGHT},${0.32 * b})`);
+      lg.addColorStop(1, `rgba(${LIGHT},${0.2 * b})`);
+      g.fillStyle = lg; g.fillRect(x0, yFar, x1 - x0, yNear - yFar);
+      lg = g.createLinearGradient(0, hazeTop, 0, yFar);
+      lg.addColorStop(0, `rgba(${LIGHT},0)`);
+      lg.addColorStop(1, `rgba(${LIGHT},${0.13 * b})`);
+      g.fillStyle = lg; g.fillRect(x0, hazeTop, x1 - x0, yFar - hazeTop);
+    }
+    // laser spot (matrix only): narrow, very bright, reaches ~2x the LED high beam
+    if (curMode === "matrix" && laserB > 0.01) {
+      const L = laserB, xl = cx + f * Math.tan(-LASER_W), xr = cx + f * Math.tan(LASER_W);
+      const yL = H0 + f * CAMH / LASER_RANGE, yN = H0 + f * CAMH / 35;
+      g.save();
+      g.filter = `blur(${Math.max(2, w * 0.006)}px)`;
+      // the far stretch of road it lights: a soft, tapering band
+      const lg = g.createLinearGradient(0, yL, 0, yN);
+      lg.addColorStop(0, `rgba(228,238,255,${0.75 * L})`); lg.addColorStop(0.6, `rgba(228,238,255,${0.35 * L})`); lg.addColorStop(1, "rgba(228,238,255,0)");
+      g.fillStyle = lg; g.beginPath(); g.moveTo(cx - 1, yL); g.lineTo(cx + 1, yL); g.lineTo(xr, yN); g.lineTo(xl, yN); g.closePath(); g.fill();
+      g.restore();
+      // where it lands far ahead: a flat, elongated glow on the road, not a ball
+      const hy = H0 + f * CAMH / 120, rx = (xr - xl) * 1.1, ry = Math.max(3, rx * 0.16);
+      g.save(); g.translate(cx, hy); g.scale(1, ry / rx);
+      const rg = g.createRadialGradient(0, 0, 0, 0, 0, rx);
+      rg.addColorStop(0, `rgba(240,246,255,${0.85 * L})`); rg.addColorStop(0.35, `rgba(210,226,255,${0.35 * L})`); rg.addColorStop(1, "rgba(200,220,255,0)");
+      g.fillStyle = rg; g.beginPath(); g.arc(0, 0, rx, 0, 7); g.fill();
+      g.restore();
+    }
+    // low beam pool
+    {
+      const pts = [P(-3.2, 1.5), P(3.4, 1.5), P(3 + 30 * 0.5, 30), P(-3 - 30 * 0.2, 30)];
+      const lg = g.createLinearGradient(0, pts[2][1], 0, h);
+      lg.addColorStop(0, `rgba(${LIGHT},0)`);
+      lg.addColorStop(1, `rgba(${LIGHT},0.3)`);
+      g.fillStyle = lg; g.beginPath(); g.moveTo(...pts[0]); for (const p of pts.slice(1)) g.lineTo(...p); g.closePath(); g.fill();
+    }
+    g.restore();
+
+    // lane markings (retroreflective: brightness follows light)
+    const mark = (X, ya, yb, col, wid = 0.13) => {
+      const l = litAt(X, (ya + yb) / 2);
+      g.fillStyle = `rgba(${col},${0.12 + 0.88 * l})`;
+      quad(X - wid / 2, X + wid / 2, ya, yb);
+    };
+    for (let Y = 1.5; Y < 160; Y *= 1.07) { const Y2 = Y * 1.07; mark(-5.4, Y, Y2, "235,238,245"); mark(3.4, Y, Y2, "235,238,245"); }
+    for (let s = 2 - scroll; s < 160; s += 12) { if (s + 3 < 3.5) continue; mark(-1.8, Math.max(3, s), s + 3, "245,196,70", 0.15); }
+
+    // reflector posts
+    for (let s = 3 - ((state.t * 12) % 25); s < 120; s += 25) {
+      if (s < 2) continue;
+      const [px, pyb] = P(4.3, s, 0), [, pyt] = P(4.3, s, 1.0);
+      const pw = Math.max(1, f * 0.1 / s);
+      const l = litAt(4.3, s);
+      g.fillStyle = `rgba(160,170,185,${0.15 + 0.6 * l})`; g.fillRect(px - pw / 2, pyt, pw, pyb - pyt);
+      g.fillStyle = `rgba(255,170,60,${0.2 + 0.8 * l})`; g.fillRect(px - pw / 2, pyt, pw, Math.max(1, (pyb - pyt) * 0.15));
+    }
+
+    // objects far to near
+    const obs = F.obs.filter(o => o.vis && o.y > 1.3).sort((a, b) => b.y - a.y);
+    for (const ob of obs) {
+      const hl = highLitOf(ob);
+      const lit = Math.min(1, hl + lowLitAt((ob.x0 + ob.x1) / 2, ob.y));
+      const xl = cx + f * ob.x0 / ob.y, xr = cx + f * ob.x1 / ob.y;
+      const Z = z => H0 + f * (CAMH - z) / ob.y;
+      const k = f / ob.y;
+      let box;
+      if (ob.kind === "car") {
+        const body = rgb([22, 26, 33], [120, 130, 146], lit);
+        g.fillStyle = body;
+        g.fillRect(xl, Z(0.95), xr - xl, Z(0.22) - Z(0.95));
+        const inset = (xr - xl) * 0.14;
+        g.beginPath(); g.moveTo(xl + inset * 0.4, Z(0.95)); g.lineTo(xr - inset * 0.4, Z(0.95)); g.lineTo(xr - inset, Z(1.45)); g.lineTo(xl + inset, Z(1.45)); g.closePath(); g.fill();
+        g.fillStyle = rgb([8, 10, 14], [40, 48, 60], lit * 0.7);
+        g.beginPath(); g.moveTo(xl + inset * 0.7, Z(1.0)); g.lineTo(xr - inset * 0.7, Z(1.0)); g.lineTo(xr - inset * 1.15, Z(1.38)); g.lineTo(xl + inset * 1.15, Z(1.38)); g.closePath(); g.fill();
+        g.fillStyle = "#020304"; g.fillRect(xl + 1, Z(0.22), (xr - xl) * 0.12, Z(0) - Z(0.22)); g.fillRect(xr - 1 - (xr - xl) * 0.12, Z(0.22), (xr - xl) * 0.12, Z(0) - Z(0.22));
+        g.save(); g.globalCompositeOperation = "lighter";
+        if (ob.role === "oncoming") {
+          for (const X of [ob.x0 + 0.35, ob.x1 - 0.35]) {
+            const [lx, ly] = P(X, ob.y, 0.68), r = Math.max(4, k * 0.9);
+            const rg = g.createRadialGradient(lx, ly, 0, lx, ly, r);
+            rg.addColorStop(0, "rgba(255,255,255,1)"); rg.addColorStop(0.18, "rgba(225,235,255,0.75)"); rg.addColorStop(1, "rgba(200,215,255,0)");
+            g.fillStyle = rg; g.beginPath(); g.arc(lx, ly, r, 0, 7); g.fill();
+            const sg = g.createLinearGradient(lx - r * 2.4, 0, lx + r * 2.4, 0);
+            sg.addColorStop(0, "rgba(200,215,255,0)"); sg.addColorStop(0.5, "rgba(220,230,255,0.45)"); sg.addColorStop(1, "rgba(200,215,255,0)");
+            g.fillStyle = sg; g.fillRect(lx - r * 2.4, ly - 0.8, r * 4.8, 1.6);
+          }
+        } else {
+          for (const X of [ob.x0 + 0.25, ob.x1 - 0.25]) {
+            const [lx, ly] = P(X, ob.y, 0.82), r = Math.max(3, k * 0.32);
+            const rg = g.createRadialGradient(lx, ly, 0, lx, ly, r);
+            rg.addColorStop(0, "rgba(255,90,80,1)"); rg.addColorStop(0.35, "rgba(255,40,40,0.6)"); rg.addColorStop(1, "rgba(255,0,0,0)");
+            g.fillStyle = rg; g.beginPath(); g.arc(lx, ly, r, 0, 7); g.fill();
+          }
+        }
+        g.restore();
+        box = [xl, Z(1.45), xr, Z(0)];
+      } else {
+        const xm = (xl + xr) / 2, pw = Math.max(1, k * 0.09);
+        g.fillStyle = rgb([30, 33, 38], [140, 145, 152], lit);
+        g.fillRect(xm - pw / 2, Z(1.7), pw, Z(0) - Z(1.7));
+        const sl = Math.min(1, lit * 1.15);
+        g.fillStyle = rgb([34, 36, 40], [250, 252, 255], sl);
+        g.fillRect(xl, Z(2.8), xr - xl, Z(1.7) - Z(2.8));
+        const fw = xr - xl;
+        if (fw > 16) {
+          g.fillStyle = rgb([20, 22, 25], [10, 10, 12], sl);
+          g.fillRect(xl + fw * 0.06, Z(2.74), fw * 0.88, Math.max(1, fw * 0.03));
+          g.textAlign = "center"; g.textBaseline = "middle";
+          g.font = `600 ${fw * 0.13}px ${getComputedStyle(document.body).getPropertyValue("--body") || "sans-serif"}`;
+          g.fillText("SPEED LIMIT", xm, Z(2.52));
+          g.font = `700 ${fw * 0.42}px Barlow Condensed, Arial Narrow, sans-serif`;
+          g.fillText("55", xm, Z(2.08));
+        }
+        if (hl > 0.5) {
+          g.save(); g.globalCompositeOperation = "lighter";
+          const [gx, gy] = [xm, Z(2.25)], r = fw * 1.6 * hl;
+          const rg = g.createRadialGradient(gx, gy, 0, gx, gy, r);
+          rg.addColorStop(0, `rgba(255,255,255,${0.85 * hl})`); rg.addColorStop(0.4, `rgba(230,240,255,${0.35 * hl})`); rg.addColorStop(1, "rgba(220,230,255,0)");
+          g.fillStyle = rg; g.beginPath(); g.arc(gx, gy, r, 0, 7); g.fill();
+          g.restore();
+        }
+        box = [xl, Z(2.8), xr, Z(0)];
+      }
+      ob.screen = box;
+      ob.hl = hl;
+
+      // camera detection brackets
+      if (state.detect && state.level >= 2 && curMode === "matrix" && F.dets.includes(ob)) {
+        const pad = 4, [a, b2, c, d] = [box[0] - pad, box[1] - pad, box[2] + pad, Math.min(h - 2, box[3] + pad)];
+        const L = Math.max(5, Math.min(14, (c - a) * 0.3));
+        g.strokeStyle = "#ffb547"; g.lineWidth = 1.5;
+        g.beginPath();
+        g.moveTo(a, b2 + L); g.lineTo(a, b2); g.lineTo(a + L, b2);
+        g.moveTo(c - L, b2); g.lineTo(c, b2); g.lineTo(c, b2 + L);
+        g.moveTo(c, d - L); g.lineTo(c, d); g.lineTo(c - L, d);
+        g.moveTo(a + L, d); g.lineTo(a, d); g.lineTo(a, d - L);
+        g.stroke();
+      }
+    }
+
+    // glare tags
+    for (const ob of obs) {
+      if (!ob.screen) continue;
+      let txt, bad;
+      if (ob.y > RANGE) {
+        if (!(F.isLaser && ob.role === "oncoming")) continue;
+        bad = curMode !== "matrix" && false; txt = curMode === "matrix" ? `Laser off · car at ${Math.round(ob.y)} m` : `Car at ${Math.round(ob.y)} m`;
+      }
+      if (ob.y <= RANGE) { if (ob.role === "oncoming") { bad = ob.hl > 0.25; txt = bad ? "Driver dazzled" : "Driver not dazzled"; }
+      else if (ob.role === "ahead") { bad = ob.hl > 0.25; txt = bad ? "Mirror glare" : "No mirror glare"; }
+      else { bad = ob.hl > 0.55; txt = bad ? "Sign glares back" : (ob.hl > 0.05 ? "Sign dimmed, readable" : "Sign unlit"); } }
+      txt = txt.toUpperCase();
+      g.font = "500 10.5px JetBrains Mono, ui-monospace, monospace";
+      const tw = g.measureText(txt).width + 22, th = 19;
+      let tx = (ob.screen[0] + ob.screen[2]) / 2 - tw / 2, ty = ob.screen[1] - th - 10;
+      tx = Math.max(6, Math.min(w - tw - 6, tx)); ty = Math.max(76, ty);
+      const col = bad ? "#ff5d6c" : "#4ff0b0";
+      g.fillStyle = "rgba(8,5,12,0.88)";
+      g.strokeStyle = col; g.lineWidth = 1;
+      g.beginPath(); g.moveTo(tx + 5, ty); g.lineTo(tx + tw, ty); g.lineTo(tx + tw, ty + th - 5); g.lineTo(tx + tw - 5, ty + th); g.lineTo(tx, ty + th); g.lineTo(tx, ty + 5); g.closePath(); g.fill(); g.stroke();
+      g.fillStyle = col; g.fillRect(tx + 6, ty + th / 2 - 2.5, 5, 5);
+      g.textAlign = "left"; g.textBaseline = "middle";
+      g.fillText(txt, tx + 15, ty + th / 2 + 0.5);
+    }
+
+    // own hood
+    g.fillStyle = "#030406";
+    g.beginPath(); g.moveTo(0, h); g.lineTo(0, h - h * 0.05); g.quadraticCurveTo(w / 2, h - h * 0.11, w, h - h * 0.05); g.lineTo(w, h); g.closePath(); g.fill();
+    if (F.isLaser) {
+      const on = curMode === "matrix" && laserB > 0.5;
+      const kmh = Math.round(F.kmh), mph = Math.round(F.kmh * 0.621);
+      g.font = "600 13px JetBrains Mono, ui-monospace, monospace"; g.textAlign = "left"; g.textBaseline = "bottom";
+      const label = `${kmh} km/h · ${mph} mph`, pill = curMode === "matrix" ? (on ? "LASER ON" : (F.kmh < LASER_KMH ? `LASER ≥ ${LASER_KMH} km/h` : "LASER OFF")) : "NO LASER";
+      const tw = g.measureText(label).width, pw = g.measureText(pill).width + 16, y0 = h - h * 0.11 - 10;
+      g.fillStyle = "rgba(8,5,12,0.85)"; g.fillRect(12, y0 - 24, tw + pw + 34, 28);
+      g.fillStyle = "#f2edf8"; g.fillText(label, 20, y0 - 3);
+      g.fillStyle = on ? "#5aa8ff" : "rgba(160,147,178,0.35)"; g.fillRect(28 + tw, y0 - 20, pw, 20);
+      g.fillStyle = on ? "#02050a" : "#f2edf8"; g.textBaseline = "middle"; g.fillText(pill, 36 + tw, y0 - 9.5);
+    }
+    drawHUD(g, w, h, cx, H0, f, F, obs);
+  }
+
+  // ---------- HUD overlay on driver view ----------
+  const HUD = "198,108,242";
+  function drawHUD(g, w, h, cx, H0, f, F, obs) {
+    const mono = s => `500 ${s}px JetBrains Mono, ui-monospace, monospace`;
+    const xa = a => cx + f * Math.tan(a);
+    const L = state.level;
+    if (L < 2) return;
+    // segment ruler
+    const ry = 52, rh = 7;
+    g.fillStyle = `rgba(${HUD},0.08)`; g.fillRect(xa(-SPREAD) - 4, ry - 4, xa(SPREAD) - xa(-SPREAD) + 8, rh + 8);
+    for (let i = 0; i < N; i++) {
+      const [a0, a1] = segA(i), x0 = xa(a0) + 1, x1 = xa(a1) - 1, b = bright[i];
+      g.fillStyle = `rgba(${HUD},${0.12 + 0.78 * b})`; g.fillRect(x0, ry, x1 - x0, rh);
+      if (curMode === "matrix" && F.dets.some(d => d.segs.includes(i))) { g.strokeStyle = "#ffb547"; g.lineWidth = 1; g.strokeRect(x0 - 0.5, ry - 1.5, x1 - x0 + 1, rh + 3); }
+    }
+    g.font = mono(9.5); g.fillStyle = `rgba(${HUD},0.75)`; g.textBaseline = "top";
+    g.textAlign = "left"; g.fillText("SEG 01", xa(-SPREAD), ry + rh + 5);
+    g.textAlign = "right"; g.fillText("SEG 24", xa(SPREAD), ry + rh + 5);
+    // bearing ticks
+    g.strokeStyle = `rgba(${HUD},0.45)`; g.lineWidth = 1; g.beginPath();
+    for (let d = -24; d <= 24; d += 2) { const x = xa(d * DEG); const L = d % 10 === 0 ? 7 : 3; g.moveTo(x, ry - 6); g.lineTo(x, ry - 6 - L); }
+    g.stroke();
+    g.textAlign = "center"; g.textBaseline = "bottom"; g.fillStyle = `rgba(${HUD},0.6)`;
+    for (const d of [-20, -10, 10, 20]) g.fillText(`${Math.abs(d)}°${d < 0 ? "L" : "R"}`, xa(d * DEG), ry - 14);
+    g.fillText("0°", cx, ry - 14);
+
+    if (L < 3) return;
+    // horizon reticle
+    g.strokeStyle = `rgba(${HUD},0.22)`; g.setLineDash([2, 6]);
+    g.beginPath(); g.moveTo(xa(-SPREAD), H0); g.lineTo(xa(SPREAD), H0); g.stroke(); g.setLineDash([]);
+    g.strokeStyle = `rgba(${HUD},0.6)`; g.beginPath();
+    g.moveTo(cx - 12, H0); g.lineTo(cx - 4, H0); g.moveTo(cx + 4, H0); g.lineTo(cx + 12, H0);
+    g.moveTo(cx, H0 - 12); g.lineTo(cx, H0 - 4); g.moveTo(cx, H0 + 4); g.lineTo(cx, H0 + 12); g.stroke();
+    // range marks on right edge of beam
+    g.textAlign = "left"; g.textBaseline = "middle"; g.font = mono(9.5);
+    for (const d of [10, 20, 40, 70]) {
+      const y = H0 + f * CAMH / d; if (y > h - 30) continue;
+      g.strokeStyle = `rgba(${HUD},0.35)`; g.beginPath(); g.moveTo(w - 46, y); g.lineTo(w - 38, y); g.stroke();
+      g.fillStyle = `rgba(${HUD},0.55)`; g.fillText(`${d}m`, w - 34, y);
+    }
+
+    // camera scan sweep
+    if (curMode === "matrix" && !reduce) {
+      const sx = xa(-SPREAD) + ((performance.now() / 1800) % 1) * (xa(SPREAD) - xa(-SPREAD));
+      const lg = g.createLinearGradient(sx - 60, 0, sx, 0);
+      lg.addColorStop(0, `rgba(${HUD},0)`); lg.addColorStop(1, `rgba(${HUD},0.09)`);
+      g.fillStyle = lg; g.fillRect(sx - 60, ry + rh + 18, 60, h * 0.62);
+      g.fillStyle = `rgba(${HUD},0.4)`; g.fillRect(sx, ry + rh + 18, 1, h * 0.62);
+    }
+
+    // track labels
+    if (state.detect && curMode === "matrix") {
+      for (const ob of obs) {
+        if (!ob.screen || !F.dets.includes(ob)) continue;
+        const [x0, , x1, y1] = ob.screen;
+        const lines = [`${TID[ob.role]} ${TKIND[ob.role].toUpperCase()}`, `${Math.max(0, ob.y).toFixed(0)}m  ${((ob.a + ob.b) / 2 / DEG).toFixed(1)}°`, `SEG ${range(ob.segs)} ${ob.dim === 0 ? "OFF" : "DIM"}`];
+        g.font = mono(10);
+        const tw = Math.max(...lines.map(t => g.measureText(t).width)) + 12;
+        let lx = x1 + 10, ly = Math.min(h - 54, y1 - 20);
+        if (lx + tw > w - 50) lx = x0 - 10 - tw;
+        lx = Math.max(6, lx);
+        g.strokeStyle = "rgba(255,181,71,0.6)"; g.lineWidth = 1;
+        g.beginPath(); g.moveTo(lx < x0 ? x0 - 4 : x1 + 4, y1 - 6); g.lineTo(lx < x0 ? lx + tw : lx, ly + 6); g.stroke();
+        g.fillStyle = "rgba(8,5,12,0.82)"; g.fillRect(lx, ly, tw, 44);
+        g.fillStyle = "#ffb547"; g.fillRect(lx, ly, 2, 44);
+        g.textAlign = "left"; g.textBaseline = "top";
+        lines.forEach((t, k) => { g.fillStyle = k === 0 ? "#ffb547" : "rgba(242,237,248,0.85)"; g.fillText(t, lx + 8, ly + 4 + k * 13); });
+      }
+    }
+
+    // telemetry footer
+    const on = bright.reduce((n, v) => n + (v > 0.5 ? 1 : 0), 0);
+    const modeTxt = { matrix: "ADB MATRIX", high: "HIGH BEAM FIXED", low: "LOW BEAM" }[curMode];
+    g.font = mono(10); g.textBaseline = "bottom"; g.textAlign = "left";
+    g.fillStyle = `rgba(${HUD},0.85)`;
+    g.fillText(`${modeTxt}  ·  SEG ON ${String(on).padStart(2, "0")}/24  ·  TRACKS ${F.dets.length}`, 14, h - 10);
+    g.textAlign = "right"; g.fillStyle = "rgba(160,147,178,0.8)";
+    if (w > 620) g.fillText("SIM · NOT TO SCALE", w - 14, h - 10);
+  }
+
+  // ---------- Overhead view ----------
+  function drawTop(F) {
+    const { w, h } = size.T; if (!w) return;
+    const g = cxT;
+    const VIEW = F.isLaser ? 170 : 80;
+    const oy = h - 30, sy = (h - 84) / VIEW, sx = F.isLaser ? (w / 2 - 8) / 26 : Math.min(sy * 2.3, (w / 2 - 8) / 26);
+    const cx = w / 2 + 0.9 * sx;
+    const T = (X, Y) => [cx + X * sx, oy - Y * sy];
+    g.fillStyle = "#07050b"; g.fillRect(0, 0, w, h);
+    g.strokeStyle = "rgba(198,108,242,0.05)"; g.lineWidth = 1; g.beginPath();
+    for (let x = cx % 24; x < w; x += 24) { g.moveTo(x + 0.5, 0); g.lineTo(x + 0.5, h); }
+    for (let y = oy % 24; y < h; y += 24) { g.moveTo(0, y + 0.5); g.lineTo(w, y + 0.5); }
+    g.stroke();
+    const rect = (x0, y0, x1, y1) => { const [a, b] = T(x0, y1), [c, d] = T(x1, y0); g.fillRect(a, b, c - a, d - b); };
+    g.fillStyle = "rgba(22,17,30,0.92)"; rect(-5.7, -10, 3.7, 220);
+
+    // beams
+    g.save(); g.globalCompositeOperation = "lighter";
+    const O = T(0, 0.2);
+    for (let i = 0; i < N; i++) {
+      const b = bright[i]; if (b < 0.01) continue;
+      const [a0, a1] = segA(i);
+      const p0 = T(RANGE * Math.tan(a0), RANGE), p1 = T(RANGE * Math.tan(a1), RANGE);
+      const lg = g.createLinearGradient(O[0], O[1], O[0], p0[1]);
+      lg.addColorStop(0, `rgba(${LIGHT},${0.08 * b})`); lg.addColorStop(0.2, `rgba(${LIGHT},${0.3 * b})`); lg.addColorStop(1, `rgba(${LIGHT},${0.03 * b})`);
+      g.fillStyle = lg; g.beginPath(); g.moveTo(...O); g.lineTo(...p0); g.lineTo(...p1); g.closePath(); g.fill();
+    }
+    {
+      const pts = [T(-1.6, 0.2), T(1.6, 0.2), T(3 + 15, 30), T(-3 - 6, 30)];
+      const lg = g.createLinearGradient(0, O[1], 0, pts[2][1]);
+      lg.addColorStop(0, `rgba(${LIGHT},0.3)`); lg.addColorStop(1, `rgba(${LIGHT},0)`);
+      g.fillStyle = lg; g.beginPath(); g.moveTo(...pts[0]); for (const p of pts.slice(1)) g.lineTo(...p); g.closePath(); g.fill();
+    }
+    g.restore();
+
+    // range rings
+    g.strokeStyle = "rgba(198,108,242,0.22)"; g.setLineDash([3, 5]);
+    for (const d of (F.isLaser ? [50, 100, 150] : [20, 40, 60])) { g.beginPath(); g.ellipse(O[0], O[1], d * sx, d * sy, 0, Math.PI, 2 * Math.PI); g.stroke(); }
+    g.setLineDash([]);
+    // laser wedge
+    if (laserB > 0.01) {
+      g.save(); g.globalCompositeOperation = "lighter";
+      const p0 = T(LASER_RANGE * Math.tan(-LASER_W), LASER_RANGE), p1 = T(LASER_RANGE * Math.tan(LASER_W), LASER_RANGE);
+      const lg = g.createLinearGradient(0, O[1], 0, p0[1]);
+      lg.addColorStop(0, `rgba(150,195,255,${0.1 * laserB})`); lg.addColorStop(0.3, `rgba(170,210,255,${0.55 * laserB})`); lg.addColorStop(1, `rgba(170,210,255,${0.3 * laserB})`);
+      g.fillStyle = lg; g.beginPath(); g.moveTo(...O); g.lineTo(...p0); g.lineTo(...p1); g.closePath(); g.fill();
+      g.restore();
+    }
+    // laser scene: make the reach of each light explicit
+    if (F.isLaser) {
+      const mono = (wt, sz) => `${wt} ${sz}px JetBrains Mono, ui-monospace, monospace`;
+      const [, yLED] = T(0, RANGE), [, yLAS] = T(0, LASER_RANGE), [, yLOW] = T(0, 30);
+      // beyond the regular headlights: darken everything outside the laser
+      g.fillStyle = "rgba(4,3,8,0.55)";
+      g.fillRect(0, yLAS - 30, w, yLED - (yLAS - 30));
+      if (laserB > 0.01) {
+        const p0 = T(LASER_RANGE * Math.tan(-LASER_W), LASER_RANGE), p1 = T(LASER_RANGE * Math.tan(LASER_W), LASER_RANGE), q0 = T(RANGE * Math.tan(-LASER_W), RANGE), q1 = T(RANGE * Math.tan(LASER_W), RANGE);
+        g.save(); g.globalCompositeOperation = "lighter";
+        g.fillStyle = `rgba(170,210,255,${0.35 * laserB})`;
+        g.beginPath(); g.moveTo(...q0); g.lineTo(...p0); g.lineTo(...p1); g.lineTo(...q1); g.closePath(); g.fill();
+        g.restore();
+      }
+      // low beam reach (faint)
+      g.strokeStyle = "rgba(160,147,178,0.45)"; g.setLineDash([3, 5]); g.lineWidth = 1;
+      g.beginPath(); g.moveTo(0, yLOW); g.lineTo(w, yLOW); g.stroke();
+      g.setLineDash([]);
+      g.font = mono(500, 10); g.fillStyle = "rgba(160,147,178,0.85)"; g.textAlign = "left"; g.textBaseline = "bottom";
+      g.fillText("LOW BEAM ~30 m", 12, yLOW - 4);
+      // regular headlight cutoff (solid, prominent)
+      g.strokeStyle = "#c66cf2"; g.lineWidth = 2.5;
+      g.beginPath(); g.moveTo(0, yLED); g.lineTo(w, yLED); g.stroke();
+      g.fillStyle = "rgba(8,5,12,0.85)"; g.font = mono(600, 11);
+      const t1 = "REGULAR HEADLIGHTS END ~75 m";
+      const tw1 = g.measureText(t1).width;
+      g.fillRect(10, yLED + 6, tw1 + 14, 20);
+      g.fillStyle = "#c66cf2"; g.textBaseline = "middle"; g.fillText(t1, 17, yLED + 16.5);
+      // laser reach line + label
+      g.strokeStyle = laserB > 0.5 ? "#5aa8ff" : "rgba(90,168,255,0.45)"; g.lineWidth = 2; g.setLineDash(laserB > 0.5 ? [] : [6, 5]);
+      g.beginPath(); g.moveTo(w * 0.18, yLAS); g.lineTo(w * 0.82, yLAS); g.stroke(); g.setLineDash([]);
+      const t2 = laserB > 0.5 ? "LASER REACHES ~150 m" : "LASER ZONE ~150 m (OFF)";
+      g.font = mono(600, 11); const tw2 = g.measureText(t2).width;
+      g.fillStyle = "rgba(8,5,12,0.85)"; g.fillRect(w / 2 - tw2 / 2 - 7, yLAS - 26, tw2 + 14, 20);
+      g.fillStyle = laserB > 0.5 ? "#5aa8ff" : "rgba(90,168,255,0.7)"; g.textAlign = "center"; g.fillText(t2, w / 2, yLAS - 15.5);
+      // dimension arrow: +75 m
+      const ax = w - 34;
+      g.strokeStyle = "#5aa8ff"; g.lineWidth = 1.5;
+      g.beginPath(); g.moveTo(ax, yLED - 3); g.lineTo(ax, yLAS + 3);
+      g.moveTo(ax - 5, yLAS + 9); g.lineTo(ax, yLAS + 3); g.lineTo(ax + 5, yLAS + 9);
+      g.moveTo(ax - 5, yLED - 9); g.lineTo(ax, yLED - 3); g.lineTo(ax + 5, yLED - 9);
+      g.stroke();
+      g.save(); g.translate(ax - 9, (yLED + yLAS) / 2); g.rotate(-Math.PI / 2);
+      g.font = mono(700, 12); g.fillStyle = "#5aa8ff"; g.textAlign = "center"; g.textBaseline = "bottom";
+      g.fillText("+75 m WITH LASER", 0, 0);
+      g.restore();
+    }
+    // fan edges
+    g.strokeStyle = "rgba(198,108,242,0.35)"; g.beginPath();
+    for (const a of [-SPREAD, SPREAD]) { g.moveTo(...O); g.lineTo(...T(RANGE * Math.tan(a), RANGE)); }
+    g.stroke();
+    // sweep
+    if (curMode === "matrix" && !reduce) {
+      const ph = (performance.now() / 1800) % 1, a = -SPREAD + ph * 2 * SPREAD;
+      const p = T(RANGE * Math.tan(a), RANGE);
+      g.strokeStyle = "rgba(198,108,242,0.45)"; g.beginPath(); g.moveTo(...O); g.lineTo(...p); g.stroke();
+    }
+    // segment labels on the far arc
+    g.font = "9.5px JetBrains Mono, ui-monospace, monospace"; g.fillStyle = "rgba(198,108,242,0.65)"; g.textAlign = "center"; g.textBaseline = "bottom";
+    for (let i = 0; i < N; i += 3) { const a = -SPREAD + (i + 0.5) * STEP; const p = T((RANGE + 2) * Math.tan(a), RANGE + 2); g.fillText(String(i + 1).padStart(2, "0"), p[0], p[1]); }
+    // segment boundary ticks at range arc
+    g.strokeStyle = "rgba(198,108,242,0.25)"; g.lineWidth = 1;
+    g.beginPath();
+    for (let i = 0; i <= N; i++) { const a = -SPREAD + i * STEP; const p = T(RANGE * Math.tan(a), RANGE), q = T((RANGE - 3) * Math.tan(a), RANGE - 3); g.moveTo(...p); g.lineTo(...q); }
+    g.stroke();
+
+    // markings
+    g.fillStyle = "rgba(230,235,245,0.55)";
+    for (const X of [-5.4, 3.4]) rect(X - 0.08, -10, X + 0.08, 220);
+    g.fillStyle = "rgba(245,196,70,0.7)";
+    const scroll = (state.t * 12) % 12;
+    for (let s = -10 - scroll; s < 220; s += 12) rect(-1.88, s, -1.72, s + 3);
+
+    // distance scale
+    g.font = "10px JetBrains Mono, ui-monospace, monospace"; g.fillStyle = "rgba(198,108,242,0.7)"; g.textAlign = "left"; g.textBaseline = "middle";
+    g.strokeStyle = "rgba(198,108,242,0.35)";
+    for (const d of (F.isLaser ? [50, 100, 150] : [20, 40, 60])) { const [, yy] = T(0, d); g.beginPath(); g.moveTo(8, yy); g.lineTo(18, yy); g.stroke(); g.fillText(d + " m", 22, yy); }
+
+    // objects
+    for (const ob of F.obs) {
+      if (ob.y + ob.len < -8 || ob.y > VIEW + 15) continue;
+      const lit = Math.min(1, highLitOf(ob) + lowLitAt((ob.x0 + ob.x1) / 2, ob.y));
+      if (ob.kind === "car") {
+        g.fillStyle = rgb([40, 46, 56], [150, 160, 175], lit);
+        rect(ob.x0, ob.y, ob.x1, ob.y + ob.len);
+        g.fillStyle = ob.role === "oncoming" ? "#eef3ff" : "#ff4a4a";
+        const [a] = T(ob.x0 + 0.2, 0), [b] = T(ob.x1 - 0.5, 0), [, yy] = T(0, ob.y);
+        g.fillRect(a, yy - 2, 3, 3); g.fillRect(b, yy - 2, 3, 3);
+      } else {
+        g.fillStyle = rgb([60, 64, 70], [250, 252, 255], lit);
+        rect(ob.x0, ob.y, ob.x1, ob.y + 0.6);
+      }
+      if (state.detect && curMode === "matrix" && F.dets.includes(ob)) {
+        const [a, b] = T(ob.x0 - 0.35, ob.y + ob.len + 1.2), [c, d] = T(ob.x1 + 0.35, ob.y - 1.2);
+        g.strokeStyle = "#ffb547"; g.lineWidth = 1.2; g.setLineDash([3, 3]);
+        g.strokeRect(a, b, c - a, d - b); g.setLineDash([]);
+        // sight line
+        const m = T((ob.x0 + ob.x1) / 2, ob.y);
+        g.strokeStyle = "rgba(255,181,71,0.35)"; g.beginPath(); g.moveTo(...O); g.lineTo(...m); g.stroke();
+      }
+    }
+
+    // own car
+    g.fillStyle = "#1d1030"; rect(-0.9, -4.5, 0.9, 0);
+    g.strokeStyle = "#c66cf2"; g.lineWidth = 1.2;
+    { const [a, b] = T(-0.9, 0), [c, d] = T(0.9, -4.5); g.strokeRect(a, b, c - a, d - b); }
+    g.fillStyle = "#c66cf2"; g.textAlign = "center"; g.textBaseline = "top";
+    g.font = "500 10.5px JetBrains Mono, ui-monospace, monospace";
+    { const [a] = T(0, 0); g.fillText("YOU", a, oy + 4 * sy > h - 14 ? h - 13 : oy + 4); }
+  }
+
+  // ---------- Text panels ----------
+  const capEl = document.getElementById("caption"), detEl = document.getElementById("dets");
+  const segCount = document.getElementById("segcount");
+  const stTgt = document.getElementById("st-tgt"), stCam = document.getElementById("st-cam"), stMode = document.getElementById("st-mode"), clock = document.getElementById("clock");
+  let lastCap = "", lastDet = "", lastText = 0;
+  const range = s => { if (!s.length) return "–"; const a = s[0] + 1, b = s[s.length - 1] + 1; return a === b ? `${a}` : `${a}–${b}`; };
+  const side = a => { const d = Math.abs((a)) / DEG; return d < 0.5 ? "dead ahead" : `${d.toFixed(0)}° ${a < 0 ? "left" : "right"}`; };
+  const mid = ob => (ob.a + ob.b) / 2;
+
+  // waterfall: segment state over the last 6 s of scene time
+  const WF_ROWS = 120, WF_DT = 0.05;
+  function drawWF() {
+    const { w, h } = size.W; if (!w) return;
+    const g = cxW, prim = primary();
+    const gap = parseFloat(getComputedStyle(strip).columnGap) || 3;
+    const cw = (w - gap * (N - 1)) / N, rh = h / WF_ROWS;
+    g.fillStyle = "#050308"; g.fillRect(0, 0, w, h);
+    for (let k = 0; k < WF_ROWS; k++) {
+      const tk = ((state.t - k * WF_DT) % LOOP + LOOP) % LOOP;
+      const T = prim === "matrix" ? compute(tk).targets.matrix : null;
+      const y = k * rh;
+      for (let i = 0; i < N; i++) {
+        const v = T ? T[i] : (prim === "high" ? 1 : 0);
+        g.fillStyle = v >= 0.99 ? `rgba(198,108,242,${0.75 - k / WF_ROWS * 0.45})` : v > 0.01 ? `rgba(255,181,71,${0.8 - k / WF_ROWS * 0.45})` : "#171020";
+        g.fillRect(i * (cw + gap), y, cw, Math.ceil(rh));
+      }
+    }
+    g.fillStyle = "#ffffff"; g.fillRect(0, 0, w, 1.5);
+    g.font = "9.5px JetBrains Mono, ui-monospace, monospace"; g.textAlign = "right"; g.textBaseline = "middle";
+    g.fillStyle = "rgba(8,5,12,0.75)"; g.fillRect(w - 30, h / 2 - 7, 28, 14); g.fillRect(w - 30, h - 15, 28, 14);
+    g.fillStyle = "rgba(242,237,248,0.75)"; g.fillText("−3s", w - 5, h / 2); g.fillText("−6s", w - 5, h - 8);
+    compute(); // restore object state for the current time
+  }
+
+  // switching event log (matrix array)
+  const logEl = document.getElementById("log"), cmpEl = document.getElementById("cmp");
+  const V = {};
+  for (const k of ["vA", "vB"]) V[k] = { box: document.getElementById(k), view: document.getElementById(k + "-view"), dz: document.getElementById(k + "-dz") };
+  let prevCodes = null, events = [], logDirty = true;
+  const codeOf = v => v <= 0.01 ? 0 : v < 0.99 ? 1 : 2;
+  const ranges = idx => { const out = []; let st = null, pv = null; for (const i of idx) { if (st === null) { st = pv = i; } else if (i === pv + 1) pv = i; else { out.push([st, pv]); st = pv = i; } } if (st !== null) out.push([st, pv]); return out.map(([a, b]) => a === b ? String(a + 1).padStart(2, "0") : `${String(a + 1).padStart(2, "0")}–${String(b + 1).padStart(2, "0")}`).join(", "); };
+  function logChanges(F, reset) {
+    const T = F.targets.matrix, codes = Array.from(T, codeOf);
+    if (reset || !prevCodes) { prevCodes = codes; return; }
+    const groups = { 0: [], 1: [], 2: [] };
+    codes.forEach((c, i) => { if (c !== prevCodes[i]) groups[c].push(i); });
+    prevCodes = codes;
+    for (const c of [0, 1, 2]) {
+      if (!groups[c].length) continue;
+      const ob = F.dets.find(d => d.segs.includes(groups[c][0]));
+      const why = c === 2 ? "track moved out of slice" : ob ? `${TID[ob.role]} at ${Math.max(0, ob.y).toFixed(0)} m` : "";
+      events.unshift({ t: state.t, c, segs: ranges(groups[c]), why });
+    }
+    events = events.slice(0, 7);
+    logDirty = true;
+  }
+
+  function updateText(F) {
+    const prim = primary(); use(prim);
+    // strip
+    for (let i = 0; i < N; i++) {
+      cells[i].l.style.opacity = bright[i].toFixed(3);
+      const tracked = prim === "matrix" && F.dets.some(d => d.segs.includes(i));
+      const tv = F.targets.matrix[i];
+      cells[i].c.classList.toggle("cut", tracked && tv <= 0.01);
+      cells[i].c.classList.toggle("dimmed", tracked && tv > 0.01 && tv < 0.99);
+    }
+    if (logDirty) {
+      logEl.innerHTML = events.length ? events.map(e => `<li><span class="t">${e.t.toFixed(2).padStart(5, "0")}s</span><span><span class="${["off", "dim", "on"][e.c]}">SEG ${e.segs} ${["OFF", "DIM 30%", "ON"][e.c]}</span> <span class="why">${e.why ? "← " + e.why : ""}</span></span></li>`).join("")
+        : `<li><span class="t">—</span><span class="why">${prim === "matrix" ? "Waiting for the camera to find something." : "Segments only switch in Matrix mode."}</span></li>`;
+      logDirty = false;
+    }
+    const now = performance.now();
+    if (now - lastText < 120 && state.playing) return;
+    lastText = now;
+
+    let cap;
+    if (prim === "high") cap = "Plain high beam: all 24 segments stay on no matter what. The road is lit, but so are other drivers' eyes and that reflective sign.";
+    else if (prim === "low") cap = "Low beam only: nobody gets dazzled, but the high-beam segments are all off, so the road past about 30 m stays dark.";
+    else if (F.isLaser && !F.dets.length) {
+      if (F.laserCar) cap = `Camera spots headlights <b>${Math.round(F.laserCar.y)} m</b> away, still beyond the LED high beam. The laser switches off first; the matrix segments react once the car gets closer.`;
+      else if (F.kmh < LASER_KMH) cap = `<b>${Math.round(F.kmh)} km/h</b>: the laser waits for speed. Until about ${LASER_KMH} km/h the matrix LED high beam does the work.`;
+      else cap = `<b>${Math.round(F.kmh)} km/h</b>, road clear: the laser adds a narrow, extra-bright spot that reaches roughly twice as far as the LED high beam.`;
+    }
+    else if (!F.dets.length) cap = "Nothing in camera range. All 24 segments run at full high beam.";
+    else {
+      cap = F.dets.slice().sort((a, b) => a.y - b.y).map(ob => {
+        const dist = Math.max(0, ob.y).toFixed(0);
+        if (ob.role === "oncoming") return `Camera sees oncoming headlights <b>${dist} m</b> away, ${side(mid(ob))}. Segments <b>${range(ob.segs)}</b> switch off, putting that driver in a dark box. As it gets closer, the box widens and slides left.`;
+        if (ob.role === "ahead") return `Taillights <b>${dist} m</b> ahead in your lane. Segments <b>${range(ob.segs)}</b> switch off so the light doesn't bounce off their mirrors, while both sides of the road stay lit.`;
+        return `Bright sign <b>${dist} m</b> ahead, ${side(mid(ob))}. Segments <b>${range(ob.segs)}</b> dim to 30% so the sign doesn't glare back at you.`;
+      }).join(" ");
+      cap += state.vs === "high" ? " In view B, plain high beams keep those segments on." : " In view B, low beams avoid glare but leave the road past about 30 m dark.";
+    }
+    if (cap !== lastCap) { capEl.innerHTML = cap; lastCap = cap; }
+
+    // mode comparison table (from targets, so it's instant and exact)
+    const glareFor = (T, ob) => { if (!ob.vis || ob.y > RANGE || !ob.raw.length) return 0; let v = 0; for (const i of ob.raw) v += T[i]; return v / ob.raw.length; };
+    const cars = F.obs.filter(o => o.kind === "car"), signs = F.obs.filter(o => o.kind === "sign" && o.vis && o.y < RANGE);
+    const shown = ["matrix", state.vs];
+    for (const [key, m] of [["vA", "matrix"], ["vB", state.vs]]) {
+      const T = F.targets[m], reach = T.reduce((a, v) => a + v, 0) / N;
+      const carsIn = cars.filter(o => o.vis && o.y < RANGE);
+      const dz = carsIn.some(o => glareFor(T, o) > 0.25);
+      const sg = signs.some(o => glareFor(T, o) > 0.55);
+      let line;
+      if (reach < 0.5) line = carsIn.length ? "Nobody dazzled, but the road ahead stays dark." : "The road ahead stays dark.";
+      else if (dz) line = carsIn.some(o => o.role === "oncoming" && glareFor(T, o) > 0.25) ? "Lights the road, and the oncoming driver's eyes." : "Lights the road, and glares in their mirrors.";
+      else if (sg) line = "Lights the road, but the sign glares back.";
+      else line = carsIn.length || signs.length ? "Lights the road. Nobody dazzled." : "Full high beam. Nothing to avoid yet.";
+      const good = reach >= 0.5 && !dz && !sg;
+      V[key].box.className = "verdict " + (good ? "good" : "bad");
+      V[key].view.className = "yn " + (reach >= 0.5 ? "good" : "bad");
+      V[key].view.textContent = reach >= 0.5 ? (m === "matrix" && F.isLaser && laserB > 0.5 ? "2× distance (laser)" : "Full distance") : "Short (~30 m)";
+      V[key].dz.className = "yn " + (!carsIn.length ? "na" : dz ? "bad" : "good");
+      V[key].dz.textContent = !carsIn.length ? "None nearby" : dz ? "Dazzled" : "Clear";
+    }
+    cmpEl.innerHTML = [["matrix", "Matrix"], ["high", "Plain high"], ["low", "Low beam"]].map(([m, name]) => {
+      const T = F.targets[m], cov = T.reduce((a, v) => a + v, 0) / N * 100;
+      const dz = cars.some(o => glareFor(T, o) > 0.25);
+      const sg = signs.length ? signs.some(o => glareFor(T, o) > 0.55) : null;
+      const yn = (bad, okTxt, badTxt) => `<span class="yn ${bad ? "bad" : "good"}">${bad ? badTxt : okTxt}</span>`;
+      return `<tr class="${shown.includes(m) ? "cur" : ""}"><td>${name}</td><td>${cov.toFixed(0)}%</td><td><div class="mbar"><i style="width:${cov.toFixed(1)}%"></i></div></td><td>${yn(dz, "Clear", "Dazzled")}</td><td>${sg === null ? '<span class="yn na">—</span>' : yn(sg, "Readable", "Glare")}</td></tr>`;
+    }).join("");
+
+    const on = bright.reduce((n, v) => n + (v > 0.5 ? 1 : 0), 0);
+    segCount.textContent = `${on}/24 on`;
+    stTgt.textContent = F.dets.length;
+    stCam.textContent = prim === "matrix" ? (F.dets.length ? "tracking" : "scanning") : "standby";
+    stMode.textContent = { high: "Plain high beam", low: "Low beam" }[state.vs];
+    clock.textContent = "T+" + state.t.toFixed(2).padStart(5, "0");
+
+    let html;
+    if (!F.dets.length) html = `<div class="empty">Nothing in camera range right now.</div>`;
+    else {
+      html = `<table><thead><tr><th>Track</th><th>Object</th><th>Range</th><th>Bearing</th><th>Seg</th><th>Action</th></tr></thead><tbody>` +
+        F.dets.map(ob => `<tr><td class="id">${TID[ob.role]}</td><td>${ob.name}</td><td>${Math.max(0, ob.y).toFixed(0)} m</td><td>${(mid(ob) / DEG).toFixed(1)}°</td><td>${range(ob.segs)}</td><td><span class="act ${ob.dim === 0 ? "off" : "dim"}">${prim === "matrix" ? (ob.dim === 0 ? "Off" : "Dim 30%") : "Ignored"}</span></td></tr>`).join("") +
+        `</tbody></table>`;
+    }
+    if (html !== lastDet) { detEl.innerHTML = html; lastDet = html; }
+  }
+
+  // ---------- Loop ----------
+  let lastFrame = null, prev = performance.now();
+  function draw(F) {
+    if (!F) return;
+    const prim = primary();
+    use(prim); drawDriver(F, "D");
+    use(state.vs); drawDriver(F, "D2");
+    use(prim); drawTop(F);
+    drawWF();
+    updateText(F);
+  }
+  function frame(now) {
+    const dt = Math.min(0.05, (now - prev) / 1000); prev = now;
+    if (state.playing) { state.t = (state.t + dt * state.speed * 1.0) % LOOP; if (!scrubbing) scrub.value = state.t; }
+    const F = compute();
+    const k = state.snap ? 1 : 1 - Math.exp(-dt * 16);
+    for (const m of ["matrix", "high", "low"]) { const B = brights[m], T = F.targets[m]; for (let i = 0; i < N; i++) B[i] += (T[i] - B[i]) * k; }
+    laserB += (F.laserTarget - laserB) * k;
+    logChanges(F, state.snap);
+    state.snap = false;
+    lastFrame = F;
+    draw(F);
+    requestAnimationFrame(frame);
+  }
+
+  // ---------- Controls ----------
+  const playBtn = document.getElementById("play"), scrub = document.getElementById("scrub");
+  let scrubbing = false;
+  const ICON_PLAY = '<svg viewBox="0 0 14 14"><path d="M3 1.5v11l9.5-5.5z"/></svg>';
+  const ICON_PAUSE = '<svg viewBox="0 0 14 14"><path d="M2.5 1.5h3.2v11H2.5zM8.3 1.5h3.2v11H8.3z"/></svg>';
+  const setPlay = p => { state.playing = p; playBtn.innerHTML = p ? ICON_PAUSE : ICON_PLAY; playBtn.setAttribute("aria-label", p ? "Pause" : "Play"); };
+  setPlay(state.playing);
+  playBtn.onclick = () => setPlay(!state.playing);
+  scrub.value = state.t;
+  scrub.addEventListener("input", () => { scrubbing = true; state.t = +scrub.value; state.snap = true; });
+  scrub.addEventListener("change", () => { scrubbing = false; });
+  scrub.addEventListener("pointerup", () => { scrubbing = false; });
+  document.addEventListener("keydown", e => { if (e.code === "Space" && e.target.tagName !== "BUTTON" && e.target.tagName !== "INPUT") { e.preventDefault(); setPlay(!state.playing); } });
+
+  function seg(id, key, cast = v => v, after) {
+    const el = document.getElementById(id);
+    el.addEventListener("click", e => {
+      const b = e.target.closest("button"); if (!b) return;
+      for (const x of el.querySelectorAll("button")) x.setAttribute("aria-pressed", x === b ? "true" : "false");
+      state[key] = cast(b.dataset.v);
+      if (after) after();
+    });
+  }
+  seg("scene", "scene", v => v, () => { state.t = state.scene === "all" ? 3.5 : state.scene === "laser" ? 0.3 : 2; scrub.value = state.t; state.snap = true; events = []; logDirty = true; });
+  const paneB = document.getElementById("paneB");
+  const tagB = document.getElementById("tagB"), root = document.getElementById("root");
+  const moreBtn = document.getElementById("more"), detailBtn = document.getElementById("detail");
+  function layout() {
+    tagB.className = "ptag " + (state.vs === "high" ? "bad" : "low");
+    tagB.innerHTML = "<b>B</b>" + (state.vs === "high" ? "Plain high beam" : "Low beam");
+    paneB.querySelector("canvas").setAttribute("aria-label", "The same moment with " + (state.vs === "high" ? "plain high beams" : "low beams"));
+    lastCap = "";
+  }
+  function setLevel(L) {
+    state.level = L;
+    root.dataset.level = L;
+    moreBtn.setAttribute("aria-expanded", L >= 2 ? "true" : "false");
+    moreBtn.firstChild.textContent = L >= 2 ? "Hide how it works " : "How does it do that? ";
+    detailBtn.setAttribute("aria-expanded", L >= 3 ? "true" : "false");
+    detailBtn.firstChild.textContent = L >= 3 ? "Hide engineering detail " : "Show engineering detail ";
+    requestAnimationFrame(fit);
+  }
+  moreBtn.addEventListener("click", () => setLevel(state.level >= 2 ? 1 : 2));
+  detailBtn.addEventListener("click", () => setLevel(state.level >= 3 ? 2 : 3));
+  seg("vsel", "vs", v => v, layout);
+
+  seg("speed", "speed", Number);
+  document.getElementById("showdet").addEventListener("change", e => { state.detect = e.target.checked; });
+
+  fit();
+  requestAnimationFrame(frame);
+})();
+</script>
+
+</body></html>
